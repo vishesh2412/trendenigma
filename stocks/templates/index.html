@@ -3,112 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrendEnigma</title>
+    <title>TrendEnigma - Stock Prediction</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             display: flex;
-            background-color: #f4f4f9;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
+            min-height: 100vh;
+            background-color: #f5f7fa;
         }
         .sidebar {
-            width: 250px;
-            background-color: #2c3e50;
+            width: 280px;
+            background: linear-gradient(180deg, #4b6cb7 0%, #182848 100%);
             color: white;
-            padding: 20px;
-            height: 100vh;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
         .sidebar h2 {
-            margin-top: 0;
-            font-size: 20px;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
             text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 1rem;
         }
-        .sidebar ul {
+        .stock-list {
             list-style: none;
             padding: 0;
         }
-        .sidebar ul li {
-            margin: 15px 0;
-            font-size: 16px;
+        .stock-list li {
+            margin: 1.5rem 0;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
         }
         .main-content {
             flex: 1;
-            padding: 20px;
+            padding: 2rem;
         }
-        form {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 600px;
             margin: 0 auto;
         }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
         label {
-            font-weight: bold;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2c3e50;
         }
         input[type="text"] {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #4b6cb7;
+            outline: none;
         }
         button {
             width: 100%;
-            padding: 10px;
-            background-color: #007BFF;
+            padding: 12px;
+            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-size: 1rem;
             cursor: pointer;
+            transition: transform 0.2s;
         }
         button:hover {
-            background-color: #0056b3;
+            transform: translateY(-2px);
         }
         .examples {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #555;
-            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        .examples ul {
+            padding-left: 1.5rem;
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
-        <h2>TrendEnigma</h2>
-        <ul>
-            <li>AAPL: ${{ stock_data['AAPL'] }}</li>
-            <li>MSFT: ${{ stock_data['MSFT'] }}</li>
-            <li>GOOGL: ${{ stock_data['GOOGL'] }}</li>
-            <li>RELIANCE.NS: ₹{{ stock_data['RELIANCE.NS'] }}</li>
-            <li>TCS.NS: ₹{{ stock_data['TCS.NS'] }}</li>
+        <h2>Live Market</h2>
+        <ul class="stock-list">
+            <li>AAPL: {{ stock_data['AAPL'] }}</li>
+            <li>MSFT: {{ stock_data['MSFT'] }}</li>
+            <li>GOOGL: {{ stock_data['GOOGL'] }}</li>
+            <li>RELIANCE: {{ stock_data['RELIANCE.BSE'] }}</li>
+            <li>TCS: {{ stock_data['TCS.BSE'] }}</li>
         </ul>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
-        <h1>Welcome to TrendEnigma</h1>
-        <form action="/predict" method="post">
-            <label for="ticker">Stock Ticker:</label>
-            <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL or RELIANCE.NS" required>
-            <br>
-            <button type="submit">Predict</button>
-        </form>
-        <div class="examples">
-            <p>Examples:</p>
-            <ul>
-                <li>American Companies: AAPL, MSFT, GOOGL</li>
-                <li>Indian Companies: RELIANCE.NS, TCS.NS, INFY.NS</li>
-            </ul>
+        <div class="card">
+            <h1>Stock Price Prediction</h1>
+            <form action="/predict" method="post">
+                <div class="form-group">
+                    <label for="ticker">Enter Stock Symbol:</label>
+                    <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL or RELIANCE" required>
+                </div>
+                <button type="submit">Predict Tomorrow's Price</button>
+            </form>
+            <div class="examples">
+                <p><strong>Examples:</strong></p>
+                <ul>
+                    <li>US Stocks: AAPL, MSFT, GOOGL</li>
+                    <li>Indian Stocks: RELIANCE, TCS, INFY</li>
+                </ul>
+            </div>
         </div>
     </div>
 </body>
