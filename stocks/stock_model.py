@@ -1,46 +1,65 @@
 import requests
 import pandas as pd
+import time
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from datetime import datetime, timedelta
 
 # Replace with your Alpha Vantage API key
-API_KEY = "YOUR_ALPHA_VANTAGE_API_KEY"
+API_KEY = "alpha_vantage+api_key_here"
 
 def fetch_stock_data(ticker):
-    """Fetch real-time and historical stock data using Alpha Vantage."""
-    # Handle Indian tickers (add .NS or .BO suffix if missing)
-    if "." not in ticker:
-        ticker += ".NS"  # Default to NSE for Indian companies
-    
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    
-    if "Time Series (Daily)" not in data:
-        print(f"Error fetching data: {data}")
+    """Fetch real-time stock data using Alpha Vantage."""
+    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={API_KEY}"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if "Global Quote" not in data:
+            print(f"Error fetching data for {ticker}: {data}")
+            return None
+        
+        quote = data["Global Quote"]
+        return {
+            'symbol': quote.get('01. symbol', ticker),
+            'price': float(quote.get('05. price', 0)),
+            'change': float(quote.get('09. change', 0)),
+            'change_percent': quote.get('10. change percent', '0%')
+        }
+    except Exception as e:
+        print(f"Error fetching {ticker}: {str(e)}")
+        return None
+
+def fetch_historical_data(ticker):
+    """Fetch historical stock data for prediction."""
+    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=compact&apikey={API_KEY}"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if "Time Series (Daily)" not in data:
+            print(f"Error fetching historical data: {data}")
+            return pd.DataFrame()
+        
+        df = pd.DataFrame(data["Time Series (Daily)"]).T
+        df.index = pd.to_datetime(df.index)
+        df = df.astype(float)
+        df.columns = ["Open", "High", "Low", "Close", "Volume"]
+        return df.sort_index()
+    except Exception as e:
+        print(f"Error fetching historical data: {str(e)}")
         return pd.DataFrame()
-    
-    # Convert JSON data to DataFrame
-    stock_data = pd.DataFrame(data["Time Series (Daily)"]).T
-    stock_data.index = pd.to_datetime(stock_data.index)
-    stock_data = stock_data.astype(float)
-    stock_data.columns = ["Open", "High", "Low", "Close", "Volume"]
-    return stock_data
 
 def prepare_data(data):
     """Prepare data for training."""
     data['Days'] = (data.index - data.index.min()).days
-    X = data[['Days']].values  # Convert to 2D array
-    y = data['Close'].values   # Convert to 1D array
+    X = data[['Days']].values
+    y = data['Close'].values
     return X, y
 
 def train_model(X, y):
     """Train a Linear Regression model."""
-    if len(X) < 5:
-        raise ValueError("Not enough data to train the model.")
-    
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = LinearRegression()
     model.fit(X_train, y_train)
@@ -52,6 +71,6 @@ def train_model(X, y):
 def get_next_trading_day(last_date):
     """Get the next trading day (skip weekends)."""
     next_day = last_date + timedelta(days=1)
-    while next_day.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+    while next_day.weekday() >= 5:
         next_day += timedelta(days=1)
     return next_day
