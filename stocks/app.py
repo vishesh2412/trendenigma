@@ -1,77 +1,77 @@
-from flask import Flask, render_template, request, redirect, url_for
-from stock_model import fetch_stock_data, prepare_data, train_model, get_next_trading_day
-from datetime import datetime, timedelta
+from flask import Flask, render_template, request
+from stock_model import fetch_stock_data, fetch_historical_data, prepare_data, train_model, get_next_trading_day
+import time
 
 app = Flask(__name__)
 
 def get_sidebar_stock_data():
     """Fetch real-time stock data for the sidebar."""
-    tickers = ["AAPL", "MSFT", "GOOGL", "RELIANCE.NS", "TCS.NS"]
+    tickers = ["AAPL", "MSFT", "GOOGL", "RELIANCE.BSE", "TCS.BSE"]
     stock_data = {}
     for ticker in tickers:
         data = fetch_stock_data(ticker)
-        if not data.empty:
-            stock_data[ticker] = round(data.iloc[-1]["Close"], 2)
+        if data:
+            stock_data[ticker] = f"${data['price']:.2f}" if "." not in ticker else f"₹{data['price']:.2f}"
         else:
             stock_data[ticker] = "N/A"
+        time.sleep(12)  # Respect API rate limits
     return stock_data
 
 @app.route('/')
 def home():
-    """Render the home page."""
     return render_template('home.html')
 
 @app.route('/index')
 def index():
-    """Render the main page with stock predictions."""
-    stock_data = get_sidebar_stock_data()
-    return render_template('index.html', stock_data=stock_data)
+    try:
+        stock_data = get_sidebar_stock_data()
+        return render_template('index.html', stock_data=stock_data)
+    except Exception as e:
+        print(f"Error in index route: {str(e)}")
+        default_data = {ticker: "N/A" for ticker in ["AAPL", "MSFT", "GOOGL", "RELIANCE.BSE", "TCS.BSE"]}
+        return render_template('index.html', stock_data=default_data)
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Get user input from the form
-    ticker = request.form['ticker'].strip().upper()
-    
-    # Fetch stock data
-    data = fetch_stock_data(ticker)
-    if data.empty:
-        stock_data = get_sidebar_stock_data()
-        return render_template('result.html', ticker=ticker, prediction="No data available for the given ticker.", stock_data=stock_data)
-    
-    # Prepare data
-    X, y = prepare_data(data)
-    
-    # Check if the dataset is too small
-    if len(X) < 5:
-        stock_data = get_sidebar_stock_data()
-        return render_template('result.html', ticker=ticker, prediction="Not enough data to make a prediction.", stock_data=stock_data)
-    
-    # Train the model
-    model = train_model(X, y)
-    
-    # Get the last available date in the data
-    last_date = data.index[-1]
-    
-    # Calculate the next trading day
-    next_trading_day = get_next_trading_day(last_date)
-    
-    # Calculate the number of days for the next trading day
-    days_since_start = (next_trading_day - data.index.min()).days
-    
-    # Predict the next trading day's closing price
-    prediction = model.predict([[days_since_start]])
-    
-    # Round the prediction value
-    prediction_rounded = round(float(prediction[0]), 2)
-    
-    # Get today's closing price (if available)
-    today_price = data.iloc[-1]["Close"] if len(data) > 0 else "N/A"
-    
-    # Fetch sidebar stock data
-    stock_data = get_sidebar_stock_data()
-    
-    # Render the result template with the prediction
-    return render_template('result.html', ticker=ticker, today_price=today_price, prediction=prediction_rounded, stock_data=stock_data)
+    try:
+        ticker = request.form['ticker'].strip().upper()
+        
+        # Handle Indian stocks
+        if ticker in ["RELIANCE", "TCS", "INFY"] and "." not in ticker:
+            ticker += ".BSE"
+        
+        # Fetch data
+        data = fetch_historical_data(ticker)
+        if data.empty:
+            raise ValueError("No historical data available")
+        
+        # Prepare and train model
+        X, y = prepare_data(data)
+        if len(X) < 5:
+            raise ValueError("Not enough data points for prediction")
+            
+        model = train_model(X, y)
+        
+        # Make prediction
+        last_day = X[-1][0] + 1
+        prediction = model.predict([[last_day]])[0]
+        
+        # Get current price
+        current_data = fetch_stock_data(ticker)
+        current_price = current_data['price'] if current_data else data.iloc[-1]["Close"]
+        
+        return render_template('result.html', 
+                            ticker=ticker,
+                            today_price=round(float(current_price), 2),
+                            prediction=round(float(prediction), 2),
+                            stock_data=get_sidebar_stock_data())
+        
+    except Exception as e:
+        print(f"Prediction error: {str(e)}")
+        return render_template('result.html',
+                            ticker=ticker,
+                            prediction=f"Error: {str(e)}",
+                            stock_data=get_sidebar_stock_data())
 
 if __name__ == '__main__':
     app.run(debug=True)
